@@ -2,11 +2,14 @@
 //
 
 #include "stdafx.h"
+#include <ctime>
 #include <list>
 #include <iostream>
+#include <fstream>
 using namespace std;
 #include "AdaptiveA.h"
-#define N 5 //10
+#define N 101 //10
+int map[N][N];
 
 /*int map[N][N] = 
 {0,0,0,0,1,1,0,0,0,1,
@@ -20,15 +23,15 @@ using namespace std;
  0,0,0,1,1,0,0,0,0,0,
  0,0,0,0,1,0,0,0,0,0};*/
 
-int map[N][N] = 
+/*int map[N][N] = 
 {0,0,0,0,0,
  0,0,1,0,0,
  0,0,1,1,0,
  0,0,1,1,0,
- 0,0,0,1,0};
+ 0,0,0,1,0};*/
 
 Point maze[N][N];
-int pathlength = 0;
+int pathlength;
 
 int mapknown[N][N] = {0};
 
@@ -147,12 +150,16 @@ void FindPath(int x0, int y0, int counter, Point* s, Point *OpenList[], Point* e
 	{
 		a->g = s->g + 1;
 		a->parent = s;
-		a->h = pathlength - a->gold;
-		//a->h = abs(a->getX() - end->getX()) + abs(a->getY() - end->getY());
+		//a->hnew = abs(s->getX() - end->getX()) + abs(s->getY() - end->getY()) - abs(s->getX() - a->getX()) - abs(s->getY() - a->getY());
+		if (counter > 1)
+			a->h = pathlength - a->gold;
+		//a->h = a->gold;
+		else
+			a->h = abs(a->getX() - end->getX()) + abs(a->getY() - end->getY());
 		a->f = a->g + a->h;
 		RemoveInOpenList(a,OpenList,opencounter);
-		InsertWithSmallG(OpenList, a, opencounter, expandedcells);
-		//InsertWithLargeG(OpenList, a, opencounter);
+		//InsertWithSmallG(OpenList, a, opencounter, expandedcells);
+		InsertWithLargeG(OpenList, a, opencounter, expandedcells);
 	}
 }
 int ComputePath(Point* OpenList[], int counter, Point* start, Point* end, int opencounter, int &expandedcells)
@@ -165,12 +172,13 @@ int ComputePath(Point* OpenList[], int counter, Point* start, Point* end, int op
 		mapknown[start.getX()][start.getY()-1] = 1;
 	if(start.getY()+1 < N && map[start.getX()][start.getY()+1] == 1)
 		mapknown[start.getX()][start->getY()+1] = 1;*/
+	int expCells = 0;
 	while(true)
 	{
 		Point* s = OpenList[1];
 		if (end->g <= s->f) 
 			break;
-
+		expCells++;
 		RemoveMin(OpenList, opencounter, 1);
 		
 
@@ -193,18 +201,30 @@ int ComputePath(Point* OpenList[], int counter, Point* start, Point* end, int op
 			FindPath(x0, y0-1, counter, s, OpenList, end, opencounter, expandedcells);
 		}
 	}
-
+	expandedcells = expCells;
 	return opencounter;
 }
 
 int main()
 {
+	clock_t begin = clock();
+
 	std::vector <Point*> path;
 	std::vector <Point*> finalPath;
 	Point* OpenList[N*N];
 	int opencounter = 0;
 	int expandedcells = 0;
 	int counter = 0;
+
+	std::ifstream in;
+	in.open("map.txt");
+	for(int i = 0; i < N; i++)
+	{
+		for(int j = 0; j < N; j++)
+		{
+			in >> map[i][j];
+		}
+	}
 	
 	for(int i = 0; i < N; i++) {
 		for(int j = 0; j < N; j++) {
@@ -214,9 +234,13 @@ int main()
 		}
 	}
 
-	Point* start = &maze[4][1]; 
-	Point* end = &maze[4][4];
+	Point* start = &maze[57][39]; 
+	Point* end = &maze[46][62];
+
+	pathlength = abs(start->getX() - end->getX()) + abs(start->getY() - end->getY());
+
 	finalPath.push_back(start);
+	int sumofexpandnode = 0;
 	while(start != end)
 	{
 		memset(OpenList, 0, sizeof(void*) * N * N);
@@ -225,6 +249,17 @@ int main()
 				maze[i][j].parent = NULL;
 			}
 		}
+
+		if(start->getX() - 1 >=0 && map[start->getX()-1][start->getY()] == 1)
+			mapknown[start->getX()-1][start->getY()] = 1;
+		if(start->getY() - 1 >=0 && map[start->getX()][start->getY()-1] == 1)
+			mapknown[start->getX()][start->getY()-1] = 1;
+		if(start->getX() + 1 < N && map[start->getX()+1][start->getY()] == 1)
+			mapknown[start->getX()+1][start->getY()] = 1;
+		if(start->getY() + 1 < N && map[start->getX()][start->getY()+1] == 1)
+			mapknown[start->getX()][start->getY()+1] = 1;
+
+
 		opencounter = 0;
 		expandedcells = 0;
 		counter = counter + 1;
@@ -234,10 +269,10 @@ int main()
 		end->search = counter;
 		start->h = abs(start->getX() - end->getX()) + abs(start->getY() - end->getY());
 		start->f = start->g + start->h;
-		InsertWithSmallG(OpenList, start, opencounter, expandedcells);
-		//InsertWithLargeG(OpenList, start, opencounter);
+		//InsertWithSmallG(OpenList, start, opencounter, expandedcells);
+		InsertWithLargeG(OpenList, start, opencounter, expandedcells);
 		opencounter = ComputePath(OpenList, counter, start, end, opencounter, expandedcells);
-
+		sumofexpandnode = sumofexpandnode + expandedcells;
 		
 		if(opencounter == 0)
 		{
@@ -256,13 +291,13 @@ int main()
 		{
 			int xx = path[i]->getX();
 			int yy = path[i]->getY();
-			cout << "xx and yy:" << xx << ", " << yy << endl;
+			//cout << "xx and yy:" << xx << ", " << yy << endl;
 			if(map[xx][yy] == 1)
 			{
 				start = path[i + 1];
 				mapknown[xx][yy] = 1;
 				
-				cout << "[Collision] xx and yy:" << xx << ", " << yy << endl;
+				//cout << "[Collision] xx and yy:" << xx << ", " << yy << endl;
 				break;
 			}
 			if (i < path.size() - 1)
@@ -272,12 +307,16 @@ int main()
 		}
 	}
 	
-	for(int i = 0; i < finalPath.size(); i++)
+	/*for(int i = 0; i < finalPath.size(); i++)
 	{
 		cout << '(' << finalPath[i]->getX() << ','<<  finalPath[i]->getY() << ')' << "\n";
-	}
-	cout << "# of counters: " << counter << endl;
-	cout << "Expandedcells:"<<expandedcells << "\n";
+	}*/
+	//cout << "# of counters: " << counter << endl;
+	cout << "Expandedcells:"<<sumofexpandnode << "\n";
+
+	clock_t endtime = clock();
+	double elapsed_secs = double(endtime - begin) / CLOCKS_PER_SEC;
+	cout << "Time(s): "<<elapsed_secs <<endl;
 	system("pause");
 	return 0;
 }

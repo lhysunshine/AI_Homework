@@ -2,6 +2,7 @@
 //
 
 #include "stdafx.h"
+#include <ctime>
 #include <list>
 #include <iostream>
 #include <fstream>
@@ -151,8 +152,8 @@ void FindPath(int x0, int y0, int counter, Point* s, Point *OpenList[], Point* e
 		a->h = abs(a->getX() - end->getX()) + abs(a->getY() - end->getY());
 		a->f = a->g + a->h;
 		RemoveInOpenList(a,OpenList,opencounter);
-		InsertWithSmallG(OpenList, a, opencounter, expandedcells);
-		//InsertWithLargeG(OpenList, a, opencounter);
+		//InsertWithSmallG(OpenList, a, opencounter, expandedcells);
+		InsertWithLargeG(OpenList, a, opencounter,expandedcells);
 	}
 }
 int ComputePath(Point* OpenList[], int counter, Point* start, Point* end, int opencounter, int &expandedcells)
@@ -165,17 +166,19 @@ int ComputePath(Point* OpenList[], int counter, Point* start, Point* end, int op
 		mapknown[start.getX()][start.getY()-1] = 1;
 	if(start.getY()+1 < N && map[start.getX()][start.getY()+1] == 1)
 		mapknown[start.getX()][start->getY()+1] = 1;*/
+	int expCells = 0;
 	while(true)
 	{
 		Point* s = OpenList[1];
 		if (end->g <= s->f) 
 			break;
-
+		expCells++;
 		RemoveMin(OpenList, opencounter, 1);
 		
 
 		int x0 = s->getX();
 		int y0 = s->getY();
+		//std::cout << "(" << x0 << ", " << y0 <<  ") ";
 		if(x0 > 0 && mapknown[x0-1][y0] != 1)
 		{
 			FindPath(x0-1, y0, counter, s, OpenList, end, opencounter, expandedcells);
@@ -193,12 +196,15 @@ int ComputePath(Point* OpenList[], int counter, Point* start, Point* end, int op
 			FindPath(x0, y0-1, counter, s, OpenList, end, opencounter, expandedcells);
 		}
 	}
+	expandedcells = expCells;
 
 	return opencounter;
 }
 
 int main()
 {
+	clock_t begin = clock();
+
 	std::vector <Point*> path;
 	std::vector <Point*> finalPath;
 	Point* OpenList[N*N];
@@ -224,9 +230,10 @@ int main()
 		}
 	}
 
-	Point* start = &maze[0][0]; 
-	Point* end = &maze[1][9];
+	Point* start = &maze[57][39]; 
+	Point* end = &maze[46][62];
 	finalPath.push_back(start);
+	int sumofexpandnode = 0;
 	while(start != end)
 	{
 		memset(OpenList, 0, sizeof(void*) * N * N);
@@ -235,6 +242,16 @@ int main()
 				maze[i][j].parent = NULL;
 			}
 		}
+
+		if(start->getX() - 1 >=0 && map[start->getX()-1][start->getY()] == 1)
+			mapknown[start->getX()-1][start->getY()] = 1;
+		if(start->getY() - 1 >=0 && map[start->getX()][start->getY()-1] == 1)
+			mapknown[start->getX()][start->getY()-1] = 1;
+		if(start->getX() + 1 < N && map[start->getX()+1][start->getY()] == 1)
+			mapknown[start->getX()+1][start->getY()] = 1;
+		if(start->getY() + 1 < N && map[start->getX()][start->getY()+1] == 1)
+			mapknown[start->getX()][start->getY()+1] = 1;
+
 		opencounter = 0;
 		expandedcells = 0;
 		counter = counter + 1;
@@ -244,11 +261,12 @@ int main()
 		end->search = counter;
 		start->h = abs(start->getX() - end->getX()) + abs(start->getY() - end->getY());
 		start->f = start->g + start->h;
-		InsertWithSmallG(OpenList, start, opencounter, expandedcells);
-		//InsertWithLargeG(OpenList, start, opencounter);
+		//InsertWithSmallG(OpenList, start, opencounter, expandedcells);
+		InsertWithLargeG(OpenList, start, opencounter,expandedcells);
+		//cout << "########Iteration " << counter << "########" << endl;
 		opencounter = ComputePath(OpenList, counter, start, end, opencounter, expandedcells);
-
-		
+		//cout << endl;
+		sumofexpandnode = sumofexpandnode + expandedcells;
 		if(opencounter == 0)
 		{
 			cout << " I cannot reach the target.";
@@ -281,14 +299,18 @@ int main()
 		}
 	}
 	
-	for(int i = 0; i < finalPath.size(); i++)
+	/*for(int i = 0; i < finalPath.size(); i++)
 	{
 		map[finalPath[i]->getX()][finalPath[i]->getY()]  = 2;
 		cout << '(' << finalPath[i]->getX() << ','<<  finalPath[i]->getY() << ')' << "\n";
-	}
+	}*/
 	//cout << "# of counters: " << counter << endl;
-	//cout << "Expandedcells:"<<expandedcells << "\n";
-	for(int i= 0; i < 2; i++)
+	cout << "Expandedcells:"<<sumofexpandnode << "\n";
+
+	clock_t endtime = clock();
+	double elapsed_secs = double(endtime - begin) / CLOCKS_PER_SEC;
+	cout << "Time(s): "<<elapsed_secs <<endl;
+	/*for(int i= 0; i < 2; i++)
 	{
 		for(int j = 0; j < N; j++)
 		{
@@ -298,7 +320,7 @@ int main()
 				cout << map[i][j] << " ";
 		}
 		cout << "\n";
-	}
+	}*/
 	system("pause");
 	return 0;
 }
